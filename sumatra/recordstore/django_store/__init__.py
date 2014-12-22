@@ -15,6 +15,9 @@ from textwrap import dedent
 import imp
 import django.conf as django_conf
 from django.core import management
+import django
+import sqlite3
+import time
 from sumatra.recordstore.base import RecordStore
 from ...core import registry
 from ...compatibility import StringIO, urlparse
@@ -185,6 +188,23 @@ class DjangoRecordStore(RecordStore):
         return [project.id for project in models.Project.objects.using(self._db_label).all()]
 
     def save(self, project_name, record):
+        success = False
+        cnt = 0
+        max_tries = 200
+        sleep_seconds = 5
+        while not success and cnt < max_tries:
+            try:
+                self.save(project_name, record)
+                success = True
+            except (django.db.utils.DatabaseError, sqlite3.OperationalError):
+                print "Failed to save record due to database error. Trying again in {} seconds. (Attempt {}/{})".format(sleep_seconds, cnt, max_tries)
+                time.sleep(sleep_seconds)
+                cnt += 1
+
+        if cnt == max_tries:
+            print "Reached maximum number of attempts to save record. Aborting."
+            
+    def _save(self, project_name, record):
         db_record = self._get_db_record(project_name, record)
         for attr in 'reason', 'duration', 'outcome', 'main_file', 'version', 'timestamp':
             value = getattr(record, attr)

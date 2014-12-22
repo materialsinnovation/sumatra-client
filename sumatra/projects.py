@@ -30,8 +30,6 @@ except ImportError:
 from copy import deepcopy
 import uuid
 import sumatra
-import django
-import sqlite3
 import time
 import shutil
 from datetime import datetime
@@ -230,21 +228,8 @@ class Project(object):
 
     def add_record(self, record):
         """Add a simulation or analysis record."""
-        success = False
-        cnt = 0
-        max_tries = 200
-        sleep_seconds = 5
-        while not success and cnt < max_tries:
-            try:
-                self.record_store.save(self.name, record)
-                success = True
-                self._most_recent = record.label
-            except (django.db.utils.DatabaseError, sqlite3.OperationalError):
-                print "Failed to save record due to database error. Trying again in {} seconds. (Attempt {}/{})".format(sleep_seconds, cnt, max_tries)
-                time.sleep(sleep_seconds)
-                cnt += 1
-        if cnt == max_tries:
-            print "Reached maximum number of attempts to save record. Aborting."
+        self.record_store.save(self.name, record)
+        self._most_recent = record.label            
 
     def get_record(self, label):
         """Search for a record with the supplied label and return it if found.
